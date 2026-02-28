@@ -167,12 +167,18 @@ export const Profile: React.FC = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-black tracking-tight">
-            Welcome! 👋
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <h1 className="text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
+            Your Nutrifuel Hub 🚀
           </h1>
-          <p className="text-muted-foreground font-medium mt-1">Manage your profile and view your activity</p>
-        </div>
+          <p className="text-muted-foreground font-bold mt-2 text-base md:text-lg">
+            Track your journey, update your profile, and stay on top of your progress.
+          </p>
+        </motion.div>
 
         <Button
           onClick={handleLogout}
