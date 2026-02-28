@@ -37,7 +37,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, acti
   const navItems = [
     { id: 'explorer', label: 'Food Explorer', icon: <Utensils className="w-4 h-4 mr-2" />, emoji: '🍽️' },
     { id: 'planner', label: 'Meal Planner', icon: <CalendarDays className="w-4 h-4 mr-2" />, emoji: '📅' },
-    { id: 'exercise', label: 'Exercise', icon: <Dumbbell className="w-4 h-4 mr-2" />, emoji: '💪' },
+    { id: 'exercise', label: 'Workouts', icon: <Dumbbell className="w-4 h-4 mr-2" />, emoji: '🏋️‍♀️' },
     { id: 'profile', label: 'Profile', icon: <UserIcon className="w-4 h-4 mr-2" />, emoji: '👤' },
   ];
 
