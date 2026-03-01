@@ -1,0 +1,441 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Slider } from '@/components/ui/slider';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Search, SlidersHorizontal, Loader2, Plus, X } from 'lucide-react';
+import { ALL_ENHANCED_FOODS, generateMoreFoods } from '@/data/enhancedFoodData';
+import { Food, FoodCategory } from '@/types/food';
+import { NutritionModal } from './NutritionModal';
+import { useAuth } from '@/contexts/AuthContext';
+import { saveSearchHistory } from '@/db/api';
+import { supabase } from '@/db/supabase';
+import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const CATEGORIES: { id: FoodCategory; label: string; emoji: string }[] = [
+  { id: 'Fruits', label: 'Fruits', emoji: '🍎' },
+  { id: 'Veggies', label: 'Veggies', emoji: '🥬' },
+  { id: 'Vegetarian', label: 'Vegetarian', emoji: '🥗' },
+  { id: 'Non-Veg', label: 'Non-Veg', emoji: '🍗' },
+  { id: 'Snacks', label: 'Snacks', emoji: '🥜' },
+  { id: 'Desserts', label: 'Desserts', emoji: '🍰' },
+  { id: 'Dairy', label: 'Dairy', emoji: '🥛' },
+  { id: 'Grains', label: 'Grains', emoji: '🌾' },
+];
+
+export const FoodExplorer: React.FC = () => {
+  const { user } = useAuth();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState<FoodCategory[]>([]);
+  const [calorieRange, setCalorieRange] = useState([0, 1000]);
+  const [proteinRange, setProteinRange] = useState([0, 100]);
+  const [carbsRange, setCarbsRange] = useState([0, 150]);
+  const [fatsRange, setFatsRange] = useState([0, 80]);
+  const [sortBy, setSortBy] = useState<'newest' | 'calories-asc' | 'protein-desc'>('newest');
+  const [selectedFood, setSelectedFood] = useState<Food | null>(null);
+  const [displayedFoods, setDisplayedFoods] = useState<Food[]>([]);
+  const [apiFoods, setApiFoods] = useState<Food[]>([]);
+  const [loadedCount, setLoadedCount] = useState(20);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [apiError, setApiError] = useState(false);
+
+  // Initialize with mock data
+  useEffect(() => {
+    const initialFoods = [...ALL_ENHANCED_FOODS, ...generateMoreFoods(ALL_ENHANCED_FOODS.length, 20 - ALL_ENHANCED_FOODS.length)];
+    setDisplayedFoods(initialFoods);
+    
+    // Load initial popular foods from API
+    searchFoodsFromAPI('popular foods');
+  }, []);
+
+  // Search foods from API
+  const searchFoodsFromAPI = async (query: string) => {
+    if (!query || query.length < 2) return;
+    
+    setSearching(true);
+    setApiError(false);
+
+    try {
+      const categoryFilter = selectedCategories.length > 0 ? selectedCategories[0] : '';
+      const { data, error } = await supabase.functions.invoke('search-foods', {
+        body: { query, category: categoryFilter },
+      });
+
+      if (error) {
+        console.error('API Error:', error);
+        setApiError(true);
+        toast.error('Using offline data. API unavailable.');
+      } else if (data?.foods && data.foods.length > 0) {
+        setApiFoods(data.foods);
+        setDisplayedFoods(data.foods);
+        setApiError(false);
+      } else {
+        // No results from API, use mock data
+        setApiError(true);
+        const mockResults = ALL_ENHANCED_FOODS.filter(f => 
+          f.name.toLowerCase().includes(query.toLowerCase())
+        );
+        setDisplayedFoods(mockResults.length > 0 ? mockResults : ALL_ENHANCED_FOODS);
+      }
+    } catch (err) {
+      console.error('Search error:', err);
+      setApiError(true);
+      toast.error('Search failed. Using offline data.');
+      setDisplayedFoods(ALL_ENHANCED_FOODS);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // Debounced search
+  useEffect(() => {
+    if (searchQuery.length >= 2) {
+      const timer = setTimeout(() => {
+        searchFoodsFromAPI(searchQuery);
+      }, 500);
+      return () => clearTimeout(timer);
+    } else if (searchQuery.length === 0) {
+      // Reset to initial data when search is cleared
+      setDisplayedFoods([...ALL_ENHANCED_FOODS, ...generateMoreFoods(ALL_ENHANCED_FOODS.length, 20 - ALL_ENHANCED_FOODS.length)]);
+    }
+  }, [searchQuery, selectedCategories]);
+
+  // Filter and sort foods
+  const filteredFoods = useMemo(() => {
+    let foods = displayedFoods;
+
+    // Category filter (only for mock data or when API didn't filter)
+    if (selectedCategories.length > 0 && apiError) {
+      foods = foods.filter((food) => selectedCategories.includes(food.category));
+    }
+
+    // Nutrition filters
+    foods = foods.filter(
+      (food) =>
+        food.calories >= calorieRange[0] &&
+        food.calories <= calorieRange[1] &&
+        food.protein >= proteinRange[0] &&
+        food.protein <= proteinRange[1] &&
+        food.carbs >= carbsRange[0] &&
+        food.carbs <= carbsRange[1] &&
+        food.fats >= fatsRange[0] &&
+        food.fats <= fatsRange[1]
+    );
+
+    // Sort
+    if (sortBy === 'calories-asc') {
+      foods.sort((a, b) => a.calories - b.calories);
+    } else if (sortBy === 'protein-desc') {
+      foods.sort((a, b) => b.protein - a.protein);
+    }
+
+    return foods;
+  }, [displayedFoods, selectedCategories, calorieRange, proteinRange, carbsRange, fatsRange, sortBy, apiError]);
+
+  const handleCategoryToggle = (category: FoodCategory) => {
+    setSelectedCategories((prev) =>
+      prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category]
+    );
+  };
+
+  const handleClearFilters = () => {
+    setSelectedCategories([]);
+    setCalorieRange([0, 1000]);
+    setProteinRange([0, 100]);
+    setCarbsRange([0, 150]);
+    setFatsRange([0, 80]);
+    setSortBy('newest');
+    setSearchQuery('');
+  };
+
+  const handleLoadMore = () => {
+    if (apiError || apiFoods.length === 0) {
+      // Load more mock data
+      const newFoods = generateMoreFoods(loadedCount, 20);
+      setDisplayedFoods([...displayedFoods, ...newFoods]);
+      setLoadedCount(loadedCount + 20);
+    } else {
+      // Search for more results from API
+      searchFoodsFromAPI(searchQuery || 'food');
+    }
+  };
+
+  const handleAddToPlanner = async (food: Food) => {
+    toast.success(`${food.name} added to planner!`);
+    
+    // Save to search history
+    if (user) {
+      await saveSearchHistory({
+        user_id: user.id,
+        search_query: searchQuery || food.name,
+        total_calories: food.calories,
+        foods: [{ food_id: food.id, food_name: food.name, calories: food.calories }],
+      });
+    }
+  };
+
+  const FilterPanel = () => (
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <Label className="text-sm font-bold uppercase tracking-wider">Calories (kcal)</Label>
+        <Slider
+          min={0}
+          max={1000}
+          step={10}
+          value={calorieRange}
+          onValueChange={setCalorieRange}
+          className="[&>span]:bg-primary"
+        />
+        <div className="flex justify-between text-xs text-muted-foreground font-bold">
+          <span>{calorieRange[0]}</span>
+          <span>{calorieRange[1]}</span>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-bold uppercase tracking-wider">Protein (g)</Label>
+        <Slider
+          min={0}
+          max={100}
+          step={1}
+          value={proteinRange}
+          onValueChange={setProteinRange}
+          className="[&>span]:bg-primary"
+        />
+        <div className="flex justify-between text-xs text-muted-foreground font-bold">
+          <span>{proteinRange[0]}g</span>
+          <span>{proteinRange[1]}g</span>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-bold uppercase tracking-wider">Carbs (g)</Label>
+        <Slider
+          min={0}
+          max={150}
+          step={1}
+          value={carbsRange}
+          onValueChange={setCarbsRange}
+          className="[&>span]:bg-primary"
+        />
+        <div className="flex justify-between text-xs text-muted-foreground font-bold">
+          <span>{carbsRange[0]}g</span>
+          <span>{carbsRange[1]}g</span>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-bold uppercase tracking-wider">Fats (g)</Label>
+        <Slider
+          min={0}
+          max={80}
+          step={1}
+          value={fatsRange}
+          onValueChange={setFatsRange}
+          className="[&>span]:bg-primary"
+        />
+        <div className="flex justify-between text-xs text-muted-foreground font-bold">
+          <span>{fatsRange[0]}g</span>
+          <span>{fatsRange[1]}g</span>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-bold uppercase tracking-wider">Categories</Label>
+        <div className="space-y-2">
+          {CATEGORIES.map((cat) => (
+            <div key={cat.id} className="flex items-center space-x-2">
+              <Checkbox
+                id={cat.id}
+                checked={selectedCategories.includes(cat.id)}
+                onCheckedChange={() => handleCategoryToggle(cat.id)}
+              />
+              <label htmlFor={cat.id} className="text-sm font-medium cursor-pointer">
+                {cat.emoji} {cat.label}
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-bold uppercase tracking-wider">Sort By</Label>
+        <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+          <SelectTrigger className="rounded-2xl glass border-none">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="glass border-none rounded-2xl">
+            <SelectItem value="newest">Newest</SelectItem>
+            <SelectItem value="calories-asc">Calories: Low to High</SelectItem>
+            <SelectItem value="protein-desc">Protein: High to Low</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Button
+        onClick={handleClearFilters}
+        variant="outline"
+        className="w-full rounded-2xl h-12 font-bold glass border-destructive/20 hover:bg-destructive/10"
+      >
+        <X className="w-4 h-4 mr-2" />
+        Clear All Filters
+      </Button>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-700">
+      {/* Search Bar */}
+      <div className="flex gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <Input
+            placeholder="Search Paneer, Apple, Chicken, Pizza..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-12 h-14 rounded-2xl glass border-none text-lg font-medium focus-visible:ring-primary"
+          />
+          {searching && (
+            <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary animate-spin" />
+          )}
+          {apiError && searchQuery && (
+            <div className="absolute right-14 top-1/2 -translate-y-1/2 text-xs text-orange-500 font-bold">
+              Offline
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Filter Button */}
+        <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
+          <SheetTrigger asChild>
+            <Button className="lg:hidden h-14 px-6 rounded-2xl nav-gradient-btn text-white">
+              <SlidersHorizontal className="w-5 h-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="glass border-none h-[80vh]">
+            <SheetHeader>
+              <SheetTitle className="text-2xl font-black">Filters</SheetTitle>
+            </SheetHeader>
+            <ScrollArea className="h-[calc(80vh-80px)] mt-6">
+              <FilterPanel />
+            </ScrollArea>
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Desktop Filter Sidebar */}
+        <div className="hidden lg:block">
+          <Card className="glass border-none rounded-[2.5rem] p-6 sticky top-24">
+            <h3 className="text-xl font-black mb-6 flex items-center gap-2">
+              <SlidersHorizontal className="w-5 h-5 text-primary" />
+              Filters
+            </h3>
+            <FilterPanel />
+          </Card>
+        </div>
+
+        {/* Food Grid */}
+        <div className="lg:col-span-3 space-y-6">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold text-muted-foreground">
+              {filteredFoods.length} foods found {apiError && '(offline mode)'}
+            </p>
+            {!apiError && apiFoods.length > 0 && (
+              <Badge className="bg-primary/10 text-primary border-none">
+                Live Data
+              </Badge>
+            )}
+          </div>
+
+          {filteredFoods.length === 0 ? (
+            <Card className="glass border-none rounded-[2.5rem] p-12 text-center">
+              <p className="text-xl font-bold text-muted-foreground mb-4">No foods found</p>
+              <p className="text-sm text-muted-foreground mb-6">
+                Try searching for "Chicken" or adjust your filters
+              </p>
+              <Button onClick={handleClearFilters} className="rounded-2xl nav-gradient-btn text-white">
+                Clear Filters
+              </Button>
+            </Card>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <AnimatePresence>
+                  {filteredFoods.map((food, index) => (
+                    <motion.div
+                      key={food.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.3, delay: index * 0.02 }}
+                    >
+                      <Card className="glass border-none rounded-3xl overflow-hidden group hover:shadow-2xl transition-all hover:scale-105 cursor-pointer">
+                        <div className="relative h-48" onClick={() => setSelectedFood(food)}>
+                          <img src={food.image} alt={food.name} className="w-full h-full object-cover" />
+                          <div className="absolute top-3 right-3 bg-primary text-white px-3 py-1 rounded-full font-bold text-sm shadow-lg">
+                            🔥 {food.calories} kcal
+                          </div>
+                        </div>
+                        <CardContent className="p-5 space-y-4">
+                          <h3 className="font-black text-xl" onClick={() => setSelectedFood(food)}>{food.name}</h3>
+                          
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground font-medium">💪 Protein</span>
+                              <span className="font-bold text-primary">{food.protein}g</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground font-medium">🍠 Carbs</span>
+                              <span className="font-bold text-orange-500">{food.carbs}g</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground font-medium">🥑 Fats</span>
+                              <span className="font-bold text-yellow-600">{food.fats}g</span>
+                            </div>
+                          </div>
+
+                          <Button
+                            onClick={() => handleAddToPlanner(food)}
+                            className="w-full rounded-2xl h-11 font-bold nav-gradient-btn text-white"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add to Planner
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+
+              {filteredFoods.length >= 20 && (
+                <div className="flex justify-center pt-6">
+                  <Button
+                    onClick={handleLoadMore}
+                    className="rounded-2xl h-12 px-8 font-bold nav-gradient-btn text-white"
+                  >
+                    Load More Foods
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Nutrition Modal */}
+      {selectedFood && (
+        <NutritionModal food={selectedFood} open={!!selectedFood} onClose={() => setSelectedFood(null)} />
+      )}
+    </div>
+  );
+};

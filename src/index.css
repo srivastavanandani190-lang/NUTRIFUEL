@@ -1,0 +1,169 @@
+/* stylelint-disable */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here.
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 158 64% 97%; /* emerald-50 */
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 160 84% 39%; /* emerald-600 */
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 199 89% 48%; /* blue-500 */
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 158 64% 97%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 160 84% 39%;
+    --radius: 1rem;
+    --chart-1: 160 84% 39%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222 47% 11%; /* slate-900 */
+    --foreground: 210 40% 98%;
+    --card: 217 33% 17%; /* slate-800 */
+    --card-foreground: 210 40% 98%;
+    --popover: 217 33% 17%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 160 84% 39%; /* emerald-500 */
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 189 94% 43%; /* cyan-500 */
+    --secondary-foreground: 210 40% 98%;
+    --muted: 215 28% 17%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+    --accent: 262 83% 58%; /* purple-500 */
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 215 28% 17%;
+    --input: 215 28% 17%;
+    --ring: 160 84% 39%;
+    --chart-1: 189 94% 43%; /* cyan-500 */
+    --chart-2: 160 84% 39%; /* emerald-500 */
+    --chart-3: 262 83% 58%; /* purple-500 */
+    --chart-4: 43 96% 56%; /* yellow-400 */
+    --chart-5: 31 97% 72%; /* orange-400 */
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 189 94% 43%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 215 28% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 215 28% 17%;
+    --sidebar-ring: 189 94% 43%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    transition: color 0.4s ease-in-out, background-color 0.4s ease-in-out, border-color 0.4s ease-in-out;
+  }
+  body {
+    @apply bg-background text-foreground;
+    transition: all 0.4s ease-in-out;
+  }
+  
+  html {
+    transition: color 0.4s ease-in-out, background-color 0.4s ease-in-out;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/80 dark:bg-slate-800/90 backdrop-blur-xl border border-emerald-100 dark:border-slate-700 shadow-2xl;
+    transition: all 0.4s ease-in-out;
+  }
+
+  .gradient-bg {
+    background: linear-gradient(135deg, #ecfdf5 0%, #eff6ff 100%); /* emerald-50 to blue-50 */
+    transition: background 0.4s ease-in-out;
+  }
+
+  .dark .gradient-bg {
+    background: linear-gradient(135deg, #0f172a 0%, #581c87 50%, #111827 100%); /* slate-900 via purple-900 to gray-900 */
+  }
+
+  .nav-gradient-btn {
+    @apply relative overflow-hidden;
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, #16a34a 100%); /* emerald-600 to green-600 */
+    transition: all 0.4s ease-in-out;
+  }
+  
+  .nav-gradient-btn:hover {
+    @apply brightness-110 shadow-2xl scale-105;
+  }
+  
+  .dark .nav-gradient-btn {
+    background: linear-gradient(135deg, #10b981 0%, #14b8a6 50%, #06b6d4 100%); /* emerald-500 via teal-500 to cyan-500 */
+  }
+  
+  .dark .nav-gradient-btn:hover {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+    @apply scale-105;
+  }
+
+  /* Glow effects for dark mode */
+  .dark .glow-text {
+    @apply text-cyan-400;
+    filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.5));
+  }
+  
+  .dark .glow-primary {
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+  }
+  
+  .dark .glow-accent {
+    box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+  }
+
+  /* Neon animation for dark mode */
+  @keyframes neon-pulse {
+    0%, 100% {
+      filter: drop-shadow(0 0 5px rgba(34, 211, 238, 0.5));
+    }
+    50% {
+      filter: drop-shadow(0 0 15px rgba(34, 211, 238, 0.8));
+    }
+  }
+  
+  .dark .neon-pulse {
+    animation: neon-pulse 2s ease-in-out infinite;
+  }
+
+  /* Active tab ring for dark mode */
+  .dark .active-tab-glow {
+    @apply ring-4 ring-emerald-500/50;
+  }
+  
+  /* Smooth theme transition */
+  .theme-transition {
+    transition: all 0.4s ease-in-out;
+  }
+}
